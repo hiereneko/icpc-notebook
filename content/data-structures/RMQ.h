@@ -1,31 +1,40 @@
 /**
- * Author: Johan Sannemo, pajenegod
- * Date: 2015-02-06
- * License: CC0
- * Source: Folklore
- * Description: Range Minimum Queries on an array. Returns
- * min(V[a], V[a + 1], ... V[b - 1]) in constant time.
- * Usage:
- *  RMQ rmq(values);
- *  rmq.query(inclusive, exclusive);
- * Time: $O(|V| \log |V| + Q)$
- * Status: stress-tested
- */
+ *  Tested:
+ *  - https://judge.yosupo.jp/problem/staticrmq
+**/
+
 #pragma once
 
-template<class T>
-struct RMQ {
-	vector<vector<T>> jmp;
-	RMQ(const vector<T>& V) : jmp(1, V) {
-		for (int pw = 1, k = 1; pw * 2 <= sz(V); pw *= 2, ++k) {
-			jmp.emplace_back(sz(V) - pw * 2 + 1);
-			rep(j,0,sz(jmp[k]))
-				jmp[k][j] = min(jmp[k - 1][j], jmp[k - 1][j + pw]);
-		}
-	}
-	T query(int a, int b) {
-		assert(a < b); // or return inf if a == b
-		int dep = 31 - __builtin_clz(b - a);
-		return min(jmp[dep][a], jmp[dep][b - (1 << dep)]);
-	}
+template <class T>
+struct SparseTable { // 0-indexed
+  int n{};
+  vector<vector<T>> table{};
+  inline T op(T a, T b) { return min(a, b); }
+  inline int highest_one(int n) { return n == 0 ? -1 : 31 - __builtin_clz(n); }
+
+  template <class U>
+  void build(const vector<U>& A) {
+    assert(!A.empty());
+    n = A.size();
+    int lv = highest_one(n) + 1;
+    table.resize(lv);
+    table[0] = A;
+    for (int i = 0; i < lv; i++) {
+      table[i].resize(n - (1 << i) + 1);
+    }
+    for (int i = 1; i < lv; i++) {
+      for (int j = 0; j <= n - (1 << i); j++) {
+        table[i][j] = op(table[i - 1][j], table[i - 1][j + (1 << (i - 1))]);
+      }
+    }
+  }
+  SparseTable() {}
+  template <class U>
+  SparseTable(const vector<U>& A) { build(A); }
+  T query(int l, int r) {
+    if (l == r) { return table[0][l]; }
+    assert(0 <= l && l < r && r < n);
+    int lv = highest_one(r - l + 1);
+    return op(table[lv][l], table[lv][r - (1 << lv) + 1]);
+  }
 };
